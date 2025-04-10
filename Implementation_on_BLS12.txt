@@ -1,0 +1,79 @@
+///////////////////Final Exponentiation Decomposition Verification on BLS12 with the new parameters (p1,r1,T1) (that is 3*(p1^12-1)/r1 = E*H)////////////////
+
+
+t:=Integers()!(- 2^44 + 2^17 + 1);
+T1 := Integers()!(2^33*t + 1);
+r1 := Integers()!(2^132*t^4 - 2^66*t^2 + 1);
+p1 := Integers()!(1/3*(2^33*t-1)^2*r1 + 2^33*t);
+
+/////Construction of finite fields 
+Fp:=FiniteField(p1);
+Fp2<a>:=ExtensionField<Fp,a|a^2+1>;
+Fp6<b>:=ExtensionField<Fp2,b|b^3-(a+1)>;
+Fp12<c>:=ExtensionField<Fp6,c|c^2-b>;
+
+//////////We choose randomly f in F_12^{*}//////////////
+
+repeat
+    f := Random(Fp12);
+until f ne Fp12!0;
+
+/////we define the polynomials m0, m1, m2, m3////////////
+
+m0:=Integers()!(46768052394588893382517914646921056628989841375232*t^5 - 10889035741470030830827987437816582766592*t^4 + 147573952589676412928*t^2 - 8589934592*t + 3);
+
+m1:=Integers()!(5444517870735015415413993718908291383296*t^4 - 1267650600228229401496703205376*t^3 + 17179869184*t - 1);
+
+
+m2:=Integers()!(633825300114114700748351602688*t^3 - 147573952589676412928*t^2 + 8589934592*t);
+
+m3:=Integers()!(73786976294838206464*t^2 - 17179869184*t + 1);
+
+
+
+E:= Integers()!((p1^6-1)*(p1^2+1));  //// here is the easy part////
+
+H:= Integers()!(m3*p1^3+m2*p1^2+m1*p1+m0);  /// here is the hard part////
+
+
+//////Addition Chain process for the expression of H///////////
+
+g0 := f; 
+g1 := f^t; 
+g2 := f^(t^2); 
+g3 := f^(t^3); 
+g4 := f^(t^4); 
+g5 := f^(t^5); 
+
+y0  := g0^(-p1) * g0^(p1^3);
+y1  := g0;
+y2  := g1^(-1)*g1^(p1^2);
+y3  := g1^(p1)*g1^(-p1^3);
+y4  := g2^(p1^3);
+y5  := g2*g2^(-p1^2);
+y6  := g3^(p1^2);
+y7  := g3^(-p1);
+y8  := g4^(p1);
+y9  := g4^(-1);
+y10 := g5;
+
+D := [1, 3, 2^33, 2^34, 2^66, 2^67, 2^99, 2^100, 2^132, 2^133, 2^165];
+
+Y :=[y0,y1,y2,y3,y4,y5,y6,y7,y8,y9,y10];
+
+
+G := &*[Y[k]^D[k]:k in [1..11]];
+F := G^(Integers()!(E));
+
+
+//// The Verification of the final exponenetiation on BLS12 ///////
+
+
+f^(3*(p1^12-1) div r1)-F;
+
+
+
+
+
+
+

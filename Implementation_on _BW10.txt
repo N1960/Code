@@ -1,0 +1,249 @@
+///////////////////////////////////////// x-Superoptimal Pairing on BW10 curves //////////////////////////////////////////
+
+
+
+//////////We define the parameters (p,r,t), that we use for the computation of the miller loop on BW10//////////////
+
+
+x:=Integers()!(2^7 + 2^13 + 2^26 - 2^32);
+p:=Integers()!((1/3)*(x^3-1)^2*(x^10-x^5+1)+x^3); 
+r:=Integers()!(x^8 + x^7 - x^5 - x^4 - x^3 + x + 1);
+T:=x^3+1;
+/////Construction of finite fields 
+Fp:=FiniteField(p);
+Fp5<a>:=ExtensionField<Fp,a|a^5+4>;
+Fp10<b>:=ExtensionField<Fp5,b|b^2-a>;
+//////Construction of the curves
+Ep:=EllipticCurve([Fp!(0),Fp!-3]);
+Ep5:=EllipticCurve([Fp5!(0),Fp5!-3*a^(-3)]); ///////The twist of Ep defined over Fp5////
+Ep10:=EllipticCurve([Fp10!(0),Fp10!-3]); /////The curve Ep defined over Fp10//////////
+////#Ep mod r;  ////The order of Ep is divisible by r////
+
+/////Looking for a point P of order r such that Frobenius(P)=P
+u:=Integers()!(#Ep/r);
+P:=u*Random(Ep);
+
+
+/////Looking for a point Q of order r such that Frobenius(Q)=p*Q///////
+uq:=Integers()!(#Ep5/r);
+
+/////////////////Looking for a point Q on G2
+QR:=Random(Ep5);
+QT:=uq*QR;
+
+//////\pi the Frobenius,is defined from Ep10 to Fp10. We want \pi(Q) ///
+x1:=QT[1]*a;
+y1:=QT[2]*a*b;
+xu:=x1^p;
+yu:=y1^p;
+X:=Ep10![xu,yu]; 
+Y:=Ep10![x1,y1];
+Q:=X-Y; 
+/////// Q satisfies \pi(Q)=p*Q
+Ep10![Q[1]^p,Q[2]^p]-p*Q;
+/////////The points P and Q are of order r
+r*Q;
+r*P;
+
+
+
+/////The adding step in the Miller Algorithm///////
+Adding:=function ( S1, S2, S3, S4, Q, P,P1,P2 ); 
+t1:=Q[1]*S4-S1;
+t2:=Q[2]*S3*S4-S2;
+t3:=t1^2;
+t4:=t1*t3;
+t5:=S1*t3;
+X:=t2^2-(t4+2*t5);
+Y:=t2*(t5-X)-S2*t4;
+Z:=S3*t1; 
+d:=Z;
+t6:=d*(P[2]-Q[2]);
+n:=t6-t2*(P[1]-Q[1]);
+n1:=t6-t2*(P1[1]-Q[1]);
+n2:=t6-t2*(P2[1]-Q[1]);
+return [X, Y, Z, Z^2, n, n1, n2];
+end function;
+
+/////The Doubling step in the Miller Algorithm///////
+Doubling:=function (S1, S2, S3, S4, P, P1,P2, a); 
+t1:=S2^2;
+t2:=4*S1*t1;
+t3:=3*S1^2+a*S4^2;
+X:=t3^2-2*t2;
+Y:=t3*(t2-X)-8*t1^2;
+Z:=S3*2*S2; 
+ld:=Z*S4;
+t4:=ld*P[2]-2*t1;
+ln:=t4-t3*(S4*P[1]-S1);
+ln1:=t4-t3*(S4*P1[1]-S1);
+ln2:=t4-t3*(S4*P2[1]-S1);
+return [X, Y, Z, Z^2, ln, ln1, ln2];
+end function;
+
+/////vertical line in the Miller Algorithm///////
+ver:=function (S1, S2, S3, S4,  P, P1, P2); 
+u_d:=S4;
+u_n:=S4*P[1]-S1;
+u_n1:=S4*P1[1]-S1;
+u_n2:=S4*P2[1]-S1;
+return [u_n,u_n1, u_n2];
+end function;
+
+
+
+Functionsupopt:=function(S1, S2, S3, S4, Q, P, P1, P2, a, x);
+n_f:=1; d_f:=1; n_g:=1; d_g:=1;  
+bin:=Intseq(Abs(x),2);
+
+for i:=#bin-2 to 0 by -1 do
+D:=Doubling(S1, S2, S3, S4, P, P1, P2, a);
+S1:=D[1]; S2:=D[2]; S3:=D[3]; S4:=D[4]; ln:=D[5]; ln1:=D[6]; ln2:=D[7]; 
+V:=ver(S1, S2, S3, S4,  P, P1, P2);
+un:=V[1];  un1:=V[2];  un2:=V[3];
+
+n_f:=n_f^2*ln*un2;   d_f:=d_f^2*un*ln2;
+n_g:=n_g^2*un2*ln1;   d_g:=d_g^2*ln2*un1;
+
+
+if bin[i+1] eq 1 then 
+A:=Adding( S1, S2, S3, S4, Q, P, P1, P2); 
+S1:=A[1]; S2:=A[2]; S3:=A[3]; S4:=A[4]; ln:=A[5]; ln1:=A[6]; ln2:=A[7];
+V:=ver(S1, S2, S3, S4,  P, P1, P2);
+un:=V[1];  un1:=V[2];    un2:=V[3];
+
+n_f:=n_f*ln*un2;   d_f:=d_f*un*ln2;
+n_g:=n_g*un2*ln1;   d_g:=d_g*ln2*un1;
+
+
+
+
+
+else if bin[i+1] eq -1 then
+A:=Adding( S1, S2, S3, S4, -Q, P, P1, P2); 
+S1:=A[1]; S2:=A[2]; S3:=A[3]; S4:=A[4]; ln1:=A[6]; ln2:=A[7];
+V:=ver(S1, S2, S3, S4,  P, P1, P2);
+un:=V[1];  un1:=V[2];    un2:=V[3];
+n_f:=n_f*ln*un2;   d_f:=d_f*un*ln2;
+n_g:=n_g*un2*ln1;   d_g:=d_g*ln2*un1;
+
+
+end if; 
+end if;
+end for;
+return [n_f, d_f, n_g, d_g];
+end function;
+
+lam:=x^10;  mu:=(x^10)^2;
+
+
+////Now we define the new parameters (p1,r1) that we will use for final exponentiation to check the complete superoptimal pairing, note that 3*(p1^10-1)/r1 = E*H/////////////
+
+t:=Integers()!(1 + 2^6 + 2^19 - 2^25);
+p1:= Integers()!((1/3)*(2^21*t^3-1)^2*(2^70*t^10-2^35*t^5+1) + 2^21*t^3);
+r1:= Integers()!(2^56*t^8 + 2^49*t^7 - 2^35*t^5 - 2^28*t^4 - 2^21*t^3 + 2^7*t + 1);
+
+m0:=Integers()!( 40564819207303340847894502572032*t^15 - 316912650057057350374175801344*t^14 + 2475880078570760549798248448*t^13 - 38685626227668133590597632*t^12 + 302231454903657293676544*t^11 - 3541774862152233910272*t^10 + 18446744073709551616*t^9 - 144115188075855872*t^8 + 1688849860263936*t^7 - 8796093022208*t^6 + 68719476736*t^5 - 268435456*t^4 + 2097152*t^3 + 32768*t^2 - 384*t + 3);
+
+m1:= Integers()!(316912650057057350374175801344*t^14 - 2475880078570760549798248448*t^13 + 19342813113834066795298816*t^12 - 453347182355485940514816*t^11 + 3541774862152233910272*t^10 - 27670116110564327424*t^9 + 288230376151711744*t^8 - 2251799813685248*t^7 + 17592186044416*t^6 - 103079215104*t^5 + 805306368*t^4 - 6291456*t^3 + 16384*t^2 + 256*t - 2);
+
+m2:= Integers()!(151115727451828646838272*t^11 - 1180591620717411303424*t^10 + 9223372036854775808*t^9 - 216172782113783808*t^8 + 1688849860263936*t^7 - 13194139533312*t^6 + 103079215104*t^5 - 805306368*t^4 + 6291456*t^3 - 16384*t^2 + 128*t - 1);
+
+m3:= Integers()!(72057594037927936*t^8 - 562949953421312*t^7 + 4398046511104*t^6 - 68719476736*t^5 + 536870912*t^4 - 4194304*t^3 + 16384*t^2 - 128*t + 1);
+
+E:= Integers()!((p1+1)*(p1^5-1));  //// here is the easy part////
+
+H:= Integers()!(m3*p1^3+m2*p1^2+m1*p1+m0);  /// here is the hard part////
+
+
+
+
+x_sup_Opt:=function(Q, P);
+
+S1:=Q[1]; S2:=Q[2]; S3:=Q[3]; S4:=1; a:=0;
+P1:=lam*P;  P2:=mu*P;
+F:=Functionsupopt(S1, S2, S3, S4, Q, P, P1,P2, 0, x);
+
+f:=((F[1]*F[2]^-1)^-x *(F[3]*F[4]^-1)^(p^2)); 
+
+//////Addition Chain process for the expression of H///////////
+
+g0 := f; 
+g1 := f^t; 
+g2 := f^(t^2); 
+g3 := f^(t^3); 
+g4 := f^(t^4); 
+g5 := f^(t^5); 
+g6 := f^(t^6); 
+g7 := f^(t^7); 
+g8 := f^(t^8); 
+g9 := f^(t^9); 
+g10 := f^(t^10); 
+g11 := f^(t^11); 
+g12 := f^(t^12); 
+g13 := f^(t^13); 
+g14 := f^(t^14); 
+g15 := f^(t^15);
+
+y0  := g0^(-p1^2) * g0^(p1^3);
+y1  := g0^(-p1);
+y2  := g0;
+y3  := g1^(p1^2) * g1^(-p1^3);
+y4  := g1^(p1);
+y5  := g1^(-1);
+y6  := g2^(p1) * g2^(-p1^2) * g2^(p1^3);
+y7  := g2;
+y8  := g3;
+y9  := g3^(-p1^3);
+y10 := g3^(-p1) * g3^(p1^2);
+y11 := g4^(-1);
+y12 := g4^(p1^3);
+y13 := g4^(p1) * g4^(-p1^2);
+y14 := g5 * g5^(-p1^3);
+y15 := g5^(-p1) * g5^(p1^2);
+y16 := g6^(p1^3);
+y17 := g6^(-1);
+y18 := g6^(-p1^2);
+y19 := g6^(p1);
+y20 := g7^(-p1^3);
+y21 := g7 * g7^(p1^2);
+y22 := g7^(-p1);
+y23 := g8^(p1^3);
+y24 := g8^(-1);
+y25 := g8^(-p1^2);
+y26 := g8^(p1);
+y27 := g9^(p1^2);
+y28 := g9;
+y29 := g9^(-p1);
+y30 := g10^(-p1^2);
+y31 := g10^(-1) * g10^(p1);
+y32 := g11^(p1^2);
+y33 := g11;
+y34 := g11^(-p1);
+y35 := g12^(p1);
+y36 := g12^(-1);
+y37 := g13 * g13^(-p1);
+y38 := g14^(-1) * g14^(p1);
+y39 := g15;
+
+
+A := [1, 2, 3, 2^7, 2^8, 2^7 * 3, 2^14, 2^15, 2^21, 2^22, 2^21 * 3, 2^28, 2^29, 2^28 * 3, 2^36, 2^35 * 3, 2^42, 2^43, 2^42 * 3, 2^44, 2^49, 2^49 * 3, 2^51, 2^56, 2^57, 2^56 * 3, 2^58, 2^63, 2^64, 2^63 * 3, 2^70, 2^70 * 3, 2^77, 2^78, 2^77 * 3, 2^84, 2^85, 2^91, 2^98, 2^105]; 
+
+
+Y := [y0,y1,y2,y3,y4,y5,y6,y7,y8,y9,y10,y11,y12,y13,y14,y15,y16,y17,y18,y19,y20,y21,y22,y23,y24,y25,y26,y27,y28,y29,y30,y31,y32,y33,y34,y35,y36,y37,y38,y39];
+
+G := &*[Y[k]^A[k]:k in [1..40]];
+
+x_sup_Opt := G^(Integers()!(E));
+ 
+return  x_sup_Opt;
+end function;
+
+
+//// The map is not trivial and is bilinear /////
+a1:=x_sup_Opt(Q,P);
+aP3:=x_sup_Opt(Q,3*P);
+aQ3:=x_sup_Opt(3*Q,P);
+IsZero(aP3-aQ3);
+IsZero(aP3-a1^3);
+
